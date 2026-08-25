@@ -1,6 +1,9 @@
 import tkinter as tk
+from tkinter import messagebox
 
 from src.payroll_service import parse_payroll
+from src.payroll_query import fetch_contribution_data
+from src.excel_export import generate_excel
 
 
 def update_service_options(event=None):
@@ -22,9 +25,8 @@ def update_service_options(event=None):
 
 def generate_export():
     """
-    Validate the payroll and service selection.
-
-    Database retrieval and Excel generation will be added later.
+    Validate user input, retrieve contribution data,
+    and generate the Excel export.
     """
 
     payroll = payroll_entry.get().strip()
@@ -34,21 +36,85 @@ def generate_export():
         service = None
 
     try:
-        result = parse_payroll(payroll, service)
+        # --------------------------------------------------
+        # Validate Payroll
+        # --------------------------------------------------
+
+        payroll_info = parse_payroll(
+            payroll,
+            service
+        )
+
+        status_label.config(
+            text="Retrieving payroll contribution data..."
+        )
+
+        root.update_idletasks()
+
+        # --------------------------------------------------
+        # Retrieve Contribution Data
+        # --------------------------------------------------
+
+        columns, rows = fetch_contribution_data(
+            payroll,
+            service
+        )
+
+        if len(rows) == 0:
+            status_label.config(
+                text="No payroll contribution records were found."
+            )
+            return
+
+        # --------------------------------------------------
+        # Generate Excel File
+        # --------------------------------------------------
+
+        output_file = generate_excel(
+            columns,
+            rows,
+            payroll,
+            service
+        )
+
+        # --------------------------------------------------
+        # Display Success
+        # --------------------------------------------------
 
         status_label.config(
             text=(
-                f"Validated successfully.\n"
-                f"Agency: {result['agency_name']} "
-                f"({result['agency_code']}) | "
-                f"Year: {result['year']} | "
-                f"Service: {result['service'] or 'N/A'}"
+                f"Contribution file generated successfully.\n"
+                f"Agency: {payroll_info['agency_name']} "
+                f"({payroll_info['agency_code']}) | "
+                f"Records: {len(rows)}"
+            )
+        )
+
+        messagebox.showinfo(
+            "Export Complete",
+            (
+                "Payroll contribution export completed successfully.\n\n"
+                f"Records exported: {len(rows)}\n"
+                f"File: {output_file}"
             )
         )
 
     except ValueError as error:
         status_label.config(
             text=str(error)
+        )
+
+    except Exception as error:
+        status_label.config(
+            text="Unable to generate payroll contribution file."
+        )
+
+        messagebox.showerror(
+            "Export Error",
+            (
+                "The payroll contribution export could not be completed.\n\n"
+                f"Details: {error}"
+            )
         )
 
 
@@ -110,7 +176,6 @@ payroll_entry.pack(
     pady=(5, 20)
 )
 
-# Check payroll whenever the user types
 payroll_entry.bind(
     "<KeyRelease>",
     update_service_options
