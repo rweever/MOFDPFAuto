@@ -36,10 +36,7 @@ def generate_export():
         service = None
 
     try:
-        # --------------------------------------------------
         # Validate Payroll
-        # --------------------------------------------------
-
         payroll_info = parse_payroll(
             payroll,
             service
@@ -51,10 +48,7 @@ def generate_export():
 
         root.update_idletasks()
 
-        # --------------------------------------------------
         # Retrieve Contribution Data
-        # --------------------------------------------------
-
         columns, rows = fetch_contribution_data(
             payroll,
             service
@@ -66,10 +60,7 @@ def generate_export():
             )
             return
 
-        # --------------------------------------------------
         # Generate Excel File
-        # --------------------------------------------------
-
         output_file = generate_excel(
             columns,
             rows,
@@ -77,10 +68,7 @@ def generate_export():
             service
         )
 
-        # --------------------------------------------------
         # Display Success
-        # --------------------------------------------------
-
         status_label.config(
             text=(
                 f"Contribution file generated successfully.\n"
@@ -125,7 +113,7 @@ def generate_export():
 root = tk.Tk()
 
 root.title("Payroll Contribution Export")
-root.geometry("600x430")
+root.geometry("600x450")
 root.resizable(False, False)
 
 
@@ -173,7 +161,20 @@ payroll_entry = tk.Entry(
 )
 payroll_entry.pack(
     padx=60,
-    pady=(5, 20)
+    pady=(5, 2)
+)
+
+# Example added following heuristic evaluation finding H-06
+payroll_example_label = tk.Label(
+    root,
+    text="Example: 03726/0400",
+    font=("Arial", 9),
+    anchor="w"
+)
+payroll_example_label.pack(
+    anchor="w",
+    padx=60,
+    pady=(0, 18)
 )
 
 payroll_entry.bind(
