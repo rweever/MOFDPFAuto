@@ -5,6 +5,7 @@ from pathlib import Path
 from src.payroll_service import parse_payroll
 from src.payroll_query import fetch_contribution_data
 from src.excel_export import generate_excel
+from src.export_logger import log_export
 
 
 # --------------------------------------------------
@@ -248,6 +249,15 @@ def generate_export():
             payroll,
             service
         )
+
+        log_export(
+    payroll=payroll_info["payroll"],
+    agency_code=payroll_info["agency_code"],
+    service=payroll_info["service"],
+    record_count=len(rows),
+    output_file=output_file,
+    status="SUCCESS"
+)
 
         set_status(
             (
