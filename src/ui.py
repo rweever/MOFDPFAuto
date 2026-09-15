@@ -1,33 +1,212 @@
 import tkinter as tk
 from tkinter import messagebox
+from pathlib import Path
 
 from src.payroll_service import parse_payroll
 from src.payroll_query import fetch_contribution_data
 from src.excel_export import generate_excel
 
 
-def update_service_options(event=None):
-    """
-    Enable Fire/Prison only when the payroll belongs to Agency 037.
-    For all other payrolls, clear and disable the service options.
-    """
+# --------------------------------------------------
+# Colours
+# --------------------------------------------------
 
+BG_COLOR = "#F0F2F5"
+CARD_COLOR = "#FFFFFF"
+PRIMARY_COLOR = "#1877F2"
+PRIMARY_HOVER = "#166FE5"
+TEXT_COLOR = "#1C1E21"
+MUTED_TEXT = "#65676B"
+BORDER_COLOR = "#DADDE1"
+SUCCESS_COLOR = "#42B72A"
+ERROR_COLOR = "#E41E3F"
+STATUS_BG = "#F7F8FA"
+
+
+# --------------------------------------------------
+# Rounded Rectangle Helper
+# --------------------------------------------------
+
+def create_rounded_rectangle(
+    canvas,
+    x1,
+    y1,
+    x2,
+    y2,
+    radius=20,
+    **kwargs
+):
+    points = [
+        x1 + radius, y1,
+        x2 - radius, y1,
+        x2, y1,
+        x2, y1 + radius,
+        x2, y2 - radius,
+        x2, y2,
+        x2 - radius, y2,
+        x1 + radius, y2,
+        x1, y2,
+        x1, y2 - radius,
+        x1, y1 + radius,
+        x1, y1
+    ]
+
+    return canvas.create_polygon(
+        points,
+        smooth=True,
+        **kwargs
+    )
+
+
+# --------------------------------------------------
+# Rounded Button
+# --------------------------------------------------
+
+class RoundedButton(tk.Canvas):
+
+    def __init__(
+        self,
+        parent,
+        text,
+        command,
+        width=540,
+        height=50,
+        radius=12
+    ):
+        super().__init__(
+            parent,
+            width=width,
+            height=height,
+            bg=CARD_COLOR,
+            highlightthickness=0,
+            cursor="hand2"
+        )
+
+        self.command = command
+
+        self.button_shape = create_rounded_rectangle(
+            self,
+            1,
+            1,
+            width - 1,
+            height - 1,
+            radius=radius,
+            fill=PRIMARY_COLOR,
+            outline=PRIMARY_COLOR
+        )
+
+        self.button_text = self.create_text(
+            width / 2,
+            height / 2,
+            text=text,
+            fill="#FFFFFF",
+            font=("Segoe UI", 11, "bold")
+        )
+
+        self.tag_bind(
+            self.button_shape,
+            "<Button-1>",
+            self._click
+        )
+
+        self.tag_bind(
+            self.button_text,
+            "<Button-1>",
+            self._click
+        )
+
+        self.bind(
+            "<Enter>",
+            self._hover_on
+        )
+
+        self.bind(
+            "<Leave>",
+            self._hover_off
+        )
+
+    def _click(self, event=None):
+        if self.command:
+            self.command()
+
+    def _hover_on(self, event=None):
+        self.itemconfig(
+            self.button_shape,
+            fill=PRIMARY_HOVER,
+            outline=PRIMARY_HOVER
+        )
+
+    def _hover_off(self, event=None):
+        self.itemconfig(
+            self.button_shape,
+            fill=PRIMARY_COLOR,
+            outline=PRIMARY_COLOR
+        )
+
+
+# --------------------------------------------------
+# Service Behaviour
+# --------------------------------------------------
+
+def update_service_options(event=None):
     payroll = payroll_entry.get().strip()
 
     if payroll.startswith("037"):
-        fire_radio.config(state="normal")
-        prison_radio.config(state="normal")
-    else:
-        service_var.set("")
-        fire_radio.config(state="disabled")
-        prison_radio.config(state="disabled")
 
+        fire_radio.config(
+            state="normal",
+            fg=TEXT_COLOR
+        )
+
+        prison_radio.config(
+            state="normal",
+            fg=TEXT_COLOR
+        )
+
+    else:
+
+        service_var.set("")
+
+        fire_radio.config(
+            state="disabled",
+            fg=MUTED_TEXT
+        )
+
+        prison_radio.config(
+            state="disabled",
+            fg=MUTED_TEXT
+        )
+
+
+# --------------------------------------------------
+# Status Behaviour
+# --------------------------------------------------
+
+def set_status(message, status_type="default"):
+
+    if status_type == "success":
+        text_color = SUCCESS_COLOR
+
+    elif status_type == "error":
+        text_color = ERROR_COLOR
+
+    elif status_type == "processing":
+        text_color = PRIMARY_COLOR
+
+    else:
+        text_color = TEXT_COLOR
+
+    status_label.config(
+        text=message,
+        fg=text_color
+    )
+
+
+# --------------------------------------------------
+# Generate Export
+# --------------------------------------------------
 
 def generate_export():
-    """
-    Validate user input, retrieve contribution data,
-    and generate the Excel export.
-    """
 
     payroll = payroll_entry.get().strip()
     service = service_var.get()
@@ -36,31 +215,33 @@ def generate_export():
         service = None
 
     try:
-        # Validate Payroll
+
         payroll_info = parse_payroll(
             payroll,
             service
         )
 
-        status_label.config(
-            text="Retrieving payroll contribution data..."
+        set_status(
+            "Retrieving payroll contribution data...",
+            "processing"
         )
 
         root.update_idletasks()
 
-        # Retrieve Contribution Data
         columns, rows = fetch_contribution_data(
             payroll,
             service
         )
 
         if len(rows) == 0:
-            status_label.config(
-                text="No payroll contribution records were found."
+
+            set_status(
+                "No payroll contribution records were found.",
+                "error"
             )
+
             return
 
-        # Generate Excel File
         output_file = generate_excel(
             columns,
             rows,
@@ -68,14 +249,14 @@ def generate_export():
             service
         )
 
-        # Display Success
-        status_label.config(
-            text=(
-                f"Contribution file generated successfully.\n"
-                f"Agency: {payroll_info['agency_name']} "
-                f"({payroll_info['agency_code']}) | "
-                f"Records: {len(rows)}"
-            )
+        set_status(
+            (
+                "Contribution file generated successfully.\n"
+                f"{payroll_info['agency_name']} "
+                f"({payroll_info['agency_code']})  •  "
+                f"{len(rows)} records"
+            ),
+            "success"
         )
 
         messagebox.showinfo(
@@ -88,93 +269,238 @@ def generate_export():
         )
 
     except ValueError as error:
-        status_label.config(
-            text=str(error)
+
+        set_status(
+            str(error),
+            "error"
         )
 
     except Exception as error:
-        status_label.config(
-            text="Unable to generate payroll contribution file."
+
+        set_status(
+            "Unable to generate payroll contribution file.",
+            "error"
         )
 
         messagebox.showerror(
             "Export Error",
             (
-                "The payroll contribution export could not be completed.\n\n"
+                "The payroll contribution export "
+                "could not be completed.\n\n"
                 f"Details: {error}"
             )
         )
 
 
 # --------------------------------------------------
-# Main Application Window
+# Main Window
 # --------------------------------------------------
 
 root = tk.Tk()
 
-root.title("Payroll Contribution Export")
-root.geometry("600x450")
-root.resizable(False, False)
+root.title(
+    "Payroll Contribution Export"
+)
+
+root.geometry(
+    "680x680"
+)
+
+root.resizable(
+    False,
+    False
+)
+
+root.configure(
+    bg=BG_COLOR
+)
 
 
 # --------------------------------------------------
-# Application Title
+# Main Container
 # --------------------------------------------------
 
-title_label = tk.Label(
+main_frame = tk.Frame(
     root,
-    text="PAYROLL CONTRIBUTION EXPORT",
-    font=("Arial", 16, "bold")
-)
-title_label.pack(
-    pady=(25, 2)
+    bg=BG_COLOR
 )
 
-subtitle_label = tk.Label(
-    root,
-    text="Ministry of Finance",
-    font=("Arial", 11)
-)
-subtitle_label.pack(
-    pady=(0, 25)
+main_frame.pack(
+    fill="both",
+    expand=True,
+    padx=45,
+    pady=14
 )
 
 
 # --------------------------------------------------
-# Payroll Input
+# Header
+# --------------------------------------------------
+
+header_frame = tk.Frame(
+    main_frame,
+    bg=BG_COLOR
+)
+
+header_frame.pack(
+    fill="x",
+    pady=(0, 4)
+)
+
+
+# --------------------------------------------------
+# Logo
+# --------------------------------------------------
+
+logo_path = (
+    Path(__file__).resolve().parent.parent
+    / "assets"
+    / "logo.png"
+)
+
+try:
+
+    logo_image = tk.PhotoImage(
+        file=logo_path
+    )
+
+    logo_image = logo_image.subsample(
+        3,
+        4
+    )
+
+    logo_label = tk.Label(
+        header_frame,
+        image=logo_image,
+        bg=BG_COLOR
+    )
+
+    logo_label.pack(
+        pady=(0, 2)
+    )
+
+except tk.TclError:
+    logo_image = None
+
+
+# --------------------------------------------------
+# Header Description
+# --------------------------------------------------
+
+description_label = tk.Label(
+    header_frame,
+    text="Generate DPF payroll contribution files",
+    font=("Segoe UI", 10),
+    fg=MUTED_TEXT,
+    bg=BG_COLOR
+)
+
+description_label.pack(
+    pady=(0, 4)
+)
+
+
+# --------------------------------------------------
+# Rounded Main Card
+# --------------------------------------------------
+
+card_canvas = tk.Canvas(
+    main_frame,
+    width=590,
+    height=315,
+    bg=BG_COLOR,
+    highlightthickness=0
+)
+
+card_canvas.pack(
+    pady=(0, 6)
+)
+
+create_rounded_rectangle(
+    card_canvas,
+    2,
+    2,
+    588,
+    313,
+    radius=18,
+    fill=CARD_COLOR,
+    outline=BORDER_COLOR
+)
+
+card_content = tk.Frame(
+    card_canvas,
+    bg=CARD_COLOR
+)
+
+card_canvas.create_window(
+    28,
+    20,
+    anchor="nw",
+    window=card_content,
+    width=534,
+    height=270
+)
+
+
+# --------------------------------------------------
+# Payroll
 # --------------------------------------------------
 
 payroll_label = tk.Label(
-    root,
-    text="Payroll",
-    font=("Arial", 10, "bold")
+    card_content,
+    text="Payroll Run Control",
+    font=("Segoe UI", 11, "bold"),
+    fg=TEXT_COLOR,
+    bg=CARD_COLOR
 )
+
 payroll_label.pack(
-    anchor="w",
-    padx=60
+    anchor="w"
+)
+
+
+# --------------------------------------------------
+# Rounded Payroll Input
+# --------------------------------------------------
+
+entry_canvas = tk.Canvas(
+    card_content,
+    height=46,
+    bg=CARD_COLOR,
+    highlightthickness=0
+)
+
+entry_canvas.pack(
+    fill="x",
+    pady=(8, 4)
+)
+
+create_rounded_rectangle(
+    entry_canvas,
+    1,
+    1,
+    532,
+    44,
+    radius=10,
+    fill="#FFFFFF",
+    outline=BORDER_COLOR
 )
 
 payroll_entry = tk.Entry(
-    root,
-    width=48,
-    font=("Arial", 11)
-)
-payroll_entry.pack(
-    padx=60,
-    pady=(5, 2)
+    entry_canvas,
+    font=("Segoe UI", 12),
+    fg=TEXT_COLOR,
+    bg="#FFFFFF",
+    relief="flat",
+    bd=0
 )
 
-# Example added following heuristic evaluation finding H-06
-payroll_example_label = tk.Label(
-    root,
-    text="Example: 03726/0400",
-    font=("Arial", 9),
-    anchor="w"
-)
-payroll_example_label.pack(
+entry_canvas.create_window(
+    14,
+    22,
     anchor="w",
-    padx=60,
-    pady=(0, 18)
+    window=payroll_entry,
+    width=500
 )
 
 payroll_entry.bind(
@@ -183,97 +509,197 @@ payroll_entry.bind(
 )
 
 
+payroll_example_label = tk.Label(
+    card_content,
+    text="Example: 03726/0400",
+    font=("Segoe UI", 9),
+    fg=MUTED_TEXT,
+    bg=CARD_COLOR
+)
+
+payroll_example_label.pack(
+    anchor="w",
+    pady=(0, 16)
+)
+
+
 # --------------------------------------------------
-# Service Options
+# Service
 # --------------------------------------------------
 
 service_label = tk.Label(
-    root,
-    text="Service (required for Agency 037 only)",
-    font=("Arial", 10, "bold")
+    card_content,
+    text="Service",
+    font=("Segoe UI", 11, "bold"),
+    fg=TEXT_COLOR,
+    bg=CARD_COLOR
 )
+
 service_label.pack(
-    anchor="w",
-    padx=60
+    anchor="w"
 )
+
+service_helper = tk.Label(
+    card_content,
+    text="Required only for Agency 037",
+    font=("Segoe UI", 9),
+    fg=MUTED_TEXT,
+    bg=CARD_COLOR
+)
+
+service_helper.pack(
+    anchor="w",
+    pady=(2, 7)
+)
+
 
 service_var = tk.StringVar(
     value=""
 )
 
 service_frame = tk.Frame(
-    root
+    card_content,
+    bg=CARD_COLOR
 )
+
 service_frame.pack(
-    pady=10
+    anchor="w",
+    pady=(0, 12)
 )
+
 
 fire_radio = tk.Radiobutton(
     service_frame,
     text="Fire",
     variable=service_var,
     value="FIRE",
-    state="disabled"
+    state="disabled",
+    font=("Segoe UI", 10),
+    fg=MUTED_TEXT,
+    bg=CARD_COLOR,
+    activebackground=CARD_COLOR,
+    selectcolor=CARD_COLOR,
+    disabledforeground="#A0A0A0"
 )
+
 fire_radio.pack(
     side="left",
-    padx=20
+    padx=(0, 35)
 )
+
 
 prison_radio = tk.Radiobutton(
     service_frame,
     text="Prison",
     variable=service_var,
     value="PRISON",
-    state="disabled"
+    state="disabled",
+    font=("Segoe UI", 10),
+    fg=MUTED_TEXT,
+    bg=CARD_COLOR,
+    activebackground=CARD_COLOR,
+    selectcolor=CARD_COLOR,
+    disabledforeground="#A0A0A0"
 )
+
 prison_radio.pack(
-    side="left",
-    padx=20
+    side="left"
 )
 
 
 # --------------------------------------------------
-# Generate Button
+# Rounded Generate Button
 # --------------------------------------------------
 
-generate_button = tk.Button(
-    root,
+generate_button = RoundedButton(
+    card_content,
     text="Generate Export",
     command=generate_export,
-    width=20
+    width=534,
+    height=50,
+    radius=12
 )
-generate_button.pack(
-    pady=25
-)
+
+generate_button.pack()
 
 
 # --------------------------------------------------
-# Status Area
+# Status Heading
 # --------------------------------------------------
 
 status_title = tk.Label(
-    root,
+    main_frame,
     text="Status",
-    font=("Arial", 10, "bold")
-)
-status_title.pack(
-    anchor="w",
-    padx=60
+    font=("Segoe UI", 11, "bold"),
+    fg=TEXT_COLOR,
+    bg=BG_COLOR
 )
 
+status_title.pack(
+    anchor="w",
+    pady=(0, 4)
+)
+
+
+# --------------------------------------------------
+# Rounded Status Card
+# --------------------------------------------------
+
+status_canvas = tk.Canvas(
+    main_frame,
+    width=590,
+    height=78,
+    bg=BG_COLOR,
+    highlightthickness=0
+)
+
+status_canvas.pack(
+    pady=(0, 4)
+)
+
+create_rounded_rectangle(
+    status_canvas,
+    2,
+    2,
+    588,
+    76,
+    radius=14,
+    fill=STATUS_BG,
+    outline=BORDER_COLOR
+)
+
+
+status_content = tk.Frame(
+    status_canvas,
+    bg=STATUS_BG
+)
+
+status_canvas.create_window(
+    20,
+    10,
+    anchor="nw",
+    window=status_content,
+    width=545,
+    height=52
+)
+
+
 status_label = tk.Label(
-    root,
+    status_content,
     text="Ready to generate.",
-    relief="sunken",
+    font=("Segoe UI", 10),
+    fg=TEXT_COLOR,
+    bg=STATUS_BG,
     anchor="w",
     justify="left",
-    width=62,
-    height=3
+    wraplength=500
 )
+
 status_label.pack(
-    padx=60,
-    pady=(5, 20)
+    fill="both",
+    expand=True,
+    padx=(5, 0),
+    pady=(0, 0)
 )
 
 
