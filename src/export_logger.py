@@ -6,6 +6,30 @@ LOG_DIR = Path("logs")
 LOG_FILE = LOG_DIR / "export_log.txt"
 
 
+def get_agency_label(agency_code, service=None):
+    """
+    Return a readable agency/service label for the export log.
+    """
+
+    if agency_code == "010":
+        return "GPF"
+
+    elif agency_code == "011":
+        return "GDF"
+
+    elif agency_code == "037":
+
+        if service == "FIRE":
+            return "MOHA Fire"
+
+        elif service == "PRISON":
+            return "MOHA Prison"
+
+        return "MOHA"
+
+    return agency_code
+
+
 def log_export(
     payroll,
     agency_code,
@@ -17,8 +41,8 @@ def log_export(
     """
     Record basic payroll export activity.
 
-    No payroll contribution values or employee information
-    are written to the log.
+    Employee-level payroll contribution information
+    is not written to the log.
     """
 
     LOG_DIR.mkdir(
@@ -29,7 +53,10 @@ def log_export(
         "%Y-%m-%d %H:%M:%S"
     )
 
-    service_value = service if service else "N/A"
+    agency_label = get_agency_label(
+        agency_code,
+        service
+    )
 
     file_name = Path(output_file).name
 
@@ -37,7 +64,7 @@ def log_export(
         f"{timestamp} | "
         f"{payroll} | "
         f"{agency_code} | "
-        f"{service_value} | "
+        f"{agency_label} | "
         f"{record_count} records | "
         f"{file_name} | "
         f"{status}\n"
