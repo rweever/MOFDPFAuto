@@ -42,12 +42,12 @@ def parse_payroll(payroll, service=None):
     # Convert 26 to 2026
     year = f"20{year_code}"
 
-    # Agencies supported by the current prototype
+    # Agencies supported by this application 
     supported_agencies = ("010", "011", "037")
 
     if agency_code not in supported_agencies:
         raise ValueError(
-            f"Agency {agency_code} is not supported in the current prototype."
+            f"Agency {agency_code} is not supported by this application."
         )
 
     # Get agency name

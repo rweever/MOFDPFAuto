@@ -1,6 +1,6 @@
 # MOF DPF Payroll Export Utility
 
-Prototype application for automating DPF payroll contribution extraction and Microsoft Excel generation.
+Application for automating DPF payroll contribution extraction and Microsoft Excel generation.
 
 ## Configuration Guidance
 
@@ -8,7 +8,7 @@ The application connects to the Ministry of Finance SQL Server environment using
 
 ### 1. Prerequisites
 
-The prototype requires:
+The application requires:
 
 * Python 3
 * Visual Studio Code or another Python development environment
@@ -25,7 +25,7 @@ From the project directory, run:
 python -m pip install -r requirements.txt
 ```
 
-The current prototype uses:
+The application uses:
 
 * `pyodbc` for Microsoft SQL Server connectivity
 * `python-dotenv` for local configuration management
@@ -41,10 +41,14 @@ Create the file in the project root:
 
 ```text
 MOFDPFAuto/
+
 ├── .env
 ├── .env.example
 ├── app.py
 ├── requirements.txt
+├── assets/
+├── logs/
+├── output/
 └── src/
 ```
 
@@ -60,7 +64,7 @@ DB_USER=<database-user>
 DB_PASSWORD=<database-password>
 ```
 
-Replace the placeholder values with the authorised database configuration for the environment in which the prototype is being executed.
+Replace the placeholder values with the authorised database configuration for the environment in which the application is being executed.
 
 ### 4. Credential Protection
 
@@ -82,11 +86,11 @@ The expected result is:
 
 The `.env.example` file may be stored in GitHub because it contains configuration placeholders only and no production credentials.
 
-Generated payroll Excel files are also excluded from the repository.
+Generated payroll Excel files and operational export logs are also excluded from the repository.
 
 ### 5. Database Access
 
-The prototype requires access to the Ministry of Finance Payroll Data Warehouse. Database access is intended to be read-only and is used only to retrieve payroll contribution information required for the export process.
+The application requires access to the Ministry of Finance Payroll Data Warehouse. Database access is intended to be read-only and is used only to retrieve payroll contribution information required for the export process.
 
 The database referenced in the `.env` configuration must correspond with the payroll year being processed. For example, a 2026 payroll must be queried against the appropriate 2026 payroll database.
 
@@ -117,14 +121,41 @@ Example:
 
 ```text
 output/
+
 └── DPF_03726_0400_FIRE.xlsx
 ```
 
 The `output` directory is excluded from GitHub because generated payroll contribution files may contain sensitive organisational information.
 
-### 8. Supported Prototype Agencies
+Successful exports are also recorded in a local activity log. The log captures:
 
-The current prototype supports:
+* date and time of the export;
+* payroll RunControl;
+* agency code;
+* agency or service label;
+* number of records exported;
+* generated file name; and
+* export status.
+
+Example:
+
+```text
+2026-09-15 10:56:06 | 01126/0700 | 011 | GDF | 2714 records | DPF_01126_0700.xlsx | SUCCESS
+```
+
+For Agency 037, the service is also identified in the log.
+
+Example:
+
+```text
+2026-09-15 10:42:18 | 03726/0400 | 037 | MOHA Fire | 922 records | DPF_03726_0400_FIRE.xlsx | SUCCESS
+```
+
+The `logs` directory is excluded from GitHub so that operational activity records remain within the authorised Ministry of Finance environment.
+
+### 8. Supported Agencies
+
+The application supports:
 
 * `010` — Guyana Police Force
 * `011` — Guyana Defence Force
@@ -132,8 +163,17 @@ The current prototype supports:
 
 Agency 037 requires the additional selection of either Fire or Prison to separate the relevant payroll contribution records.
 
-### 9. Current Prototype Limitation
+The export activity log uses the following labels:
 
-The prototype requires access to the authorised Ministry of Finance ICT environment and Payroll Data Warehouse for live data retrieval. Therefore, database-dependent functionality cannot be reproduced outside that environment without appropriate authorised access and configuration.
+* `010` — GPF
+* `011` — GDF
+* `037` with Fire — MOHA Fire
+* `037` with Prison — MOHA Prison
 
-A screen-recorded demonstration is maintained as contingency evidence of the working end-to-end prototype.
+### 9. Current Application Limitation
+
+The application requires access to the authorised Ministry of Finance ICT environment and Payroll Data Warehouse for live data retrieval. Therefore, database-dependent functionality cannot be reproduced outside that environment without appropriate authorised access and configuration.
+
+The payroll database configured in the `.env` file must also correspond with the payroll year being processed.
+
+A screen-recorded demonstration is maintained as contingency evidence of the working end-to-end application.
